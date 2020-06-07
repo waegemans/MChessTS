@@ -1,23 +1,24 @@
 language: cpp
+compiler: gcc
 
-env:
-  global:
-    - LINUX_DIST=trusty
+os: linux
+dist: bionic
 
-matrix:
-  include:
-    - os: linux
-      dist : bionic
-      sudo : true
-      compiler : gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-9
-            - g++-9
-            - cmake
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-9
+      - g++-9
+      - cmake
 
 script:
-  - gcc -v && g++ -v && cmake --version
+  - export CC=gcc-9
+  - export CXX=g++-9
+  - cmake --version
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - test/tester
