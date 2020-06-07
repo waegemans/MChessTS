@@ -53,3 +53,47 @@ TEST(TestState, BishopTake) {
   moves = state.legalMoves();
   EXPECT_EQ(moves.size(), 6*2);
 }
+
+TEST(TestState, PawnStart) {
+  auto state = chess::State();
+  state.parseFen("8/8/8/8/8/8/P7/8");
+  auto moves = state.legalMoves();
+  EXPECT_EQ(moves.size(), 2);
+
+
+  state.parseFen("8/8/8/8/8/P7/8/8");
+  moves = state.legalMoves();
+  EXPECT_EQ(moves.size(), 1);
+
+  state.parseFen("8/8/8/8/k7/8/P7/8");
+  moves = state.legalMoves();
+  EXPECT_EQ(moves.size(), 1);
+}
+
+TEST(TestState, PawnTake) {
+  auto state = chess::State();
+  state.parseFen("8/8/8/8/1k6/P7/8/8");
+  auto moves = state.legalMoves();
+  EXPECT_EQ(moves.size(), 2);
+
+
+  state.parseFen("8/8/8/8/8/1k6/P7/8");
+  moves = state.legalMoves();
+  EXPECT_EQ(moves.size(), 3);
+
+  state.parseFen("8/8/8/8/8/pppppppp/PPPPPPPP/8");
+  moves = state.legalMoves();
+  EXPECT_EQ(moves.size(), 7*2);
+}
+
+TEST(TestState, PawnPromote) {
+  auto state = chess::State();
+  state.parseFen("8/P7/8/8/8/8/8/8");
+  auto moves = state.legalMoves();
+  EXPECT_EQ(moves.size(), 4);
+
+  state.parseFen("pppppppp/PPPPPPPP/8/8/8/8/8/8");
+  moves = state.legalMoves();
+  EXPECT_EQ(moves.size(), 7*2*4);
+
+}

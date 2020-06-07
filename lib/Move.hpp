@@ -12,6 +12,7 @@ public:
 
 public:
   Move(unsigned fromSquare, unsigned toSquare) : fromSquare(fromSquare), toSquare(toSquare) {};
+  Move(unsigned fromSquare, unsigned toSquare, char promotion) : fromSquare(fromSquare), toSquare(toSquare), promotion(promotion) {};
   explicit Move(std::string_view uci);
   [[nodiscard]] std::string toUCI() const;
 };
