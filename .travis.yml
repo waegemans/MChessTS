@@ -7,11 +7,13 @@ env:
 matrix:
   include:
     - os: linux
-      dist : trusty
+      dist : bionic
       sudo : true
       compiler : gcc
       addons:
         apt:
+          sources:
+            - ubuntu-toolchain-r-test
           packages:
             - gcc-9
             - g++-9
