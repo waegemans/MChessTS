@@ -6,12 +6,10 @@
 namespace chess {
 namespace internal {
 char fileCharFromSquare(unsigned square) {
-  assert(square >= 0);
   assert(square < 64);
   return 'h' - (square%8);
 }
 char rowCharFromSquare(unsigned square) {
-  assert(square >= 0);
   assert(square < 64);
   return '1' + (square/8);
 

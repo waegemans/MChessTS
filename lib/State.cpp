@@ -4,7 +4,7 @@
 
 namespace chess {
 namespace {
-uint64_t getMovablesQueenLike(int dx, int dy, int i, bool pov, bool isPovDirection, uint64_t& lastFree, const Bitboard& bitboard) {
+uint64_t getMovablesQueenLike(int dx, int dy, int i, bool pov, uint64_t& lastFree, const Bitboard& bitboard) {
   auto free = bitboard.freeSquares(dy, dx, pov);
   auto take = bitboard.takeSquares(dy, dx, pov);
   uint64_t movable = lastFree & (free | take);
@@ -21,7 +21,6 @@ void fillMove(uint64_t movable, int dx, int dy, std::unordered_set<Move, HashMov
     uint64_t bitMask = (1ull << bitPos);
     if ((bitMask & movable )!= 0) {
       auto toPos = bitPos-dx+dy*8;
-      assert(toPos >= 0);
       assert(toPos < 64);
       if ((bitMask & promotable) != 0) {
         for (char c : {'q','r','n','b'}) {
@@ -44,7 +43,6 @@ void queenLikeMoves(const Bitboard& bitboard, bool pov, std::unordered_set<Move,
       if (yscale==0 && xscale==0)
         continue;
 
-      bool isPovDirection = yscale == (pov ? 1 : -1);
       bool orthogonal = yscale == 0 || xscale == 0;
       auto majorPieces = orthogonal ? orthogonalPieces : diagonalPieces;
       uint64_t lastFree = majorPieces;
@@ -52,7 +50,7 @@ void queenLikeMoves(const Bitboard& bitboard, bool pov, std::unordered_set<Move,
       for (int i = 1; i < 8; i++) {
         auto dx = xscale*i;
         auto dy = yscale*i;
-        uint64_t movable = getMovablesQueenLike(dx,dy,i,pov, isPovDirection,lastFree,bitboard);
+        uint64_t movable = getMovablesQueenLike(dx,dy,i,pov,lastFree,bitboard);
         fillMove(movable, dx, dy, result);
       }
     }
