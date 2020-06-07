@@ -1,0 +1,21 @@
+language: cpp
+
+env:
+  global:
+    - LINUX_DIST=trusty
+
+matrix:
+  include:
+    - os: linux
+      dist : trusty
+      sudo : true
+      compiler : gcc
+      addons:
+        apt:
+          packages:
+            - gcc-9
+            - g++-9
+            - cmake
+
+script:
+  - gcc -v && g++ -v && cmake --version
