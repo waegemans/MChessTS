@@ -6,7 +6,7 @@
 
 namespace chess {
 class Bitboard {
-private:
+public:
   uint64_t kings;
   uint64_t queens;
   uint64_t rooks;
@@ -16,7 +16,7 @@ private:
 
   uint64_t occupied_white;
   uint64_t occupied_black;
-
+private:
   [[nodiscard]] uint64_t occupied_pov(bool pov) const;
   [[nodiscard]] uint64_t checkSquares(int up, int right, bool pov, uint64_t toMask) const;
 
@@ -28,10 +28,8 @@ public:
   [[nodiscard]] uint64_t getBishops() const {return bishops;};
   [[nodiscard]] uint64_t getPawns() const {return pawns;};
 
-  [[nodiscard]] uint64_t getOccupiedWhite() const {return occupied_white;};
-  [[nodiscard]] uint64_t getOccupiedBlack() const {return occupied_black;};
-
   [[nodiscard]] uint64_t getOccupiedPov(bool pov) const {return pov ? occupied_white : occupied_black;};
+  [[nodiscard]] uint64_t occupied() const;
 
   void startpos();
   void parse_fen(std::string_view boardFen);
@@ -41,6 +39,8 @@ public:
 
   [[nodiscard]] uint64_t freeSquares(int up, int right, bool pov) const;
   [[nodiscard]] uint64_t takeSquares(int up, int right, bool pov) const;
+
+  void applyMove(unsigned fromSquare, unsigned toSquare);
 
 }; // class Bitboard
 } // namespace chess

@@ -5,7 +5,7 @@ set(
         TestMove.cpp
         TestState.cpp
         Tester.cpp
-)
+        TestScore.cpp TestPieceCountEvaluator.cpp)
 
 add_executable(tester ${TEST_SOURCES})
 target_link_libraries(

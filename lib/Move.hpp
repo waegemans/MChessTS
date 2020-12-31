@@ -15,6 +15,8 @@ public:
   Move(unsigned fromSquare, unsigned toSquare, char promotion) : fromSquare(fromSquare), toSquare(toSquare), promotion(promotion) {};
   explicit Move(std::string_view uci);
   [[nodiscard]] std::string toUCI() const;
+  [[nodiscard]] unsigned fileDistance() const;
+  [[nodiscard]] unsigned rowDistance() const;
 };
 
 bool operator== (const Move&, const Move&);

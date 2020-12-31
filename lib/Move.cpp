@@ -54,7 +54,21 @@ std::string Move::toUCI() const {
   };
 }
 
-bool operator== (const Move& lhs, const Move& rhs) {
+    unsigned Move::fileDistance() const {
+        auto fromFile = fromSquare%8;
+        auto toFile = toSquare%8;
+
+        return fromFile > toFile ? fromFile-toFile : toFile - fromFile;
+    }
+
+    unsigned Move::rowDistance() const {
+        auto fromRow = fromSquare/8;
+        auto toRow = toSquare/8;
+
+        return fromRow > toRow ? fromRow - toRow : toRow - fromRow;
+    }
+
+    bool operator== (const Move& lhs, const Move& rhs) {
   return lhs.promotion == rhs.promotion
     && lhs.fromSquare == rhs.fromSquare
     && lhs.toSquare == rhs.toSquare;
