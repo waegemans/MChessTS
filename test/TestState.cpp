@@ -200,3 +200,11 @@ TEST(TestState, GameOver) {
     state.parseFen("3Rk3/8/6K1/8/8/8/8/8 b - - 0 1");
     EXPECT_FALSE(state.isGameOver());
 }
+
+TEST(TestState, Checked) {
+    chess::State state;
+    state.parseFen("8/kp4pp/8/1p6/2p3q1/N1P2P2/PP1rr2P/3R1R1K w - - 0 1");
+    EXPECT_FALSE(state.isCheck());
+    state.parseFen("8/kp4pp/6q1/1p6/2p3Q1/N1P2P2/PP1r3r/3R1R1K w - - 0 1");
+    EXPECT_TRUE(state.isCheck());
+}

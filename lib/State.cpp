@@ -204,8 +204,9 @@ namespace chess {
         unsigned enemyKingPos = __builtin_ctzll(enemyKings);
 
         // check if enemy king can be captured
-        for (const auto& move : pseudoLegalMoves() ){
-            if (move.toSquare == enemyKingPos) return false;
+        for (const auto& move : pseudoLegalMoves(flipPov) ){
+            if (move.toSquare == enemyKingPos)
+                return false;
         }
         return true;
     }
@@ -284,7 +285,7 @@ namespace chess {
     }
 
     bool State::isCheck() const{
-        bool retVal = isLegal(true);
+        bool retVal = !isLegal(true);
         return retVal;
     }
 

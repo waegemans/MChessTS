@@ -9,7 +9,6 @@ namespace chess {
     Move AlphaBetaSearch::findNextMove(const State &state, const Clock &clock) {
         std::stack<Move> line;
         for (unsigned depth = 1; clock.white_time_ms == 0 && depth < 10; depth++) {
-            std::cout << "info depth " << depth << std::endl;
             auto score = search(state, depth, state.getPov(), std::nullopt, std::nullopt, line);
             if (score.isMate) {
                 break;
@@ -28,8 +27,8 @@ namespace chess {
         for (const auto &move : state.legalMoves()) {
             nextMoveStateVector.emplace_back(move, state.applyMove(move));
         }
-        std::sort(nextMoveStateVector.begin(), nextMoveStateVector.end(), presortingLessThen(evaluator));
-        for (const auto& [move,nextState] : nextMoveStateVector) {
+        std::sort(nextMoveStateVector.begin(), nextMoveStateVector.end(), presortingLessThen(max));
+        for (const auto&[move, nextState] : nextMoveStateVector) {
             std::stack<Move> nextLine;
             auto nextScore = search(nextState, depth - 1, !max, alpha, beta, nextLine);
             // update new optimum
@@ -67,13 +66,12 @@ namespace chess {
 
 
     bool presortingLessThen::operator()(const std::pair<Move, State> &lhs, const std::pair<Move, State> &rhs) {
-        bool leftOver = lhs.second.isGameOver();
-        bool rightOver = rhs.second.isGameOver();
         bool leftCheck = lhs.second.isCheck();
         bool rightCheck = rhs.second.isCheck();
 
-        if (leftOver ^ rightOver) return leftOver;
-        if (leftCheck ^ rightCheck) return rightCheck;
-        return evaluator(lhs.second) < evaluator(rhs.second);
+        if (leftCheck ^ rightCheck) return leftCheck;
+        auto leftEval = evaluator.evalNotGameOver(lhs.second);
+        auto rightEval = evaluator.evalNotGameOver(rhs.second);
+        return maximize ? leftEval > rightEval : leftEval < rightEval;
     }
 }

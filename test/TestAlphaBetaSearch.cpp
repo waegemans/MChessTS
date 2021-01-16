@@ -24,8 +24,8 @@ TEST(TestAlphaBetaSearch, MateInTwo) {
     expectUCI("1k6/3q1Q2/1K6/8/8/8/8/8 w - - 0 1","f7d7");
 }
 
-TEST(TestAlphaBetaSearch, ForceQueenEndgame) {
-    expectUCI("6Q1/8/8/4k1K1/8/8/5q2/8 b - - 0 1","e2e4");
+TEST(TestAlphaBetaSearch, MateInTree) {
+    expectUCI("8/kp4pp/6q1/1p6/2p3Q1/N1P2P2/PP1rr2P/3R1R1K b - - 13 30","e2h2");
 }
 
 

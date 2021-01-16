@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stack>
+#include <eval/PieceCountEvaluator.hpp>
 #include "Search.hpp"
 
 namespace chess {
@@ -13,8 +14,9 @@ private:
 };
 struct presortingLessThen {
 public:
-    Evaluator& evaluator;
-    explicit presortingLessThen(Evaluator& evaluator) : evaluator(evaluator) {};
+    PieceCountEvaluator evaluator;
+    bool maximize;
+    explicit presortingLessThen(bool maximize) : evaluator(), maximize(maximize) {};
     inline bool operator() (const std::pair<Move,State>&,const std::pair<Move,State>&);
 };
 }

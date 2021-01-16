@@ -19,8 +19,11 @@ TEST(TestPieceCountEvaluator, Mate) {
 TEST(TestPieceCountEvaluator, Startpos) {
     auto evaluator = chess::PieceCountEvaluator();
     auto state = chess::State();
+    state.reset();
     auto score = evaluator(state);
     EXPECT_EQ(chess::Score(0), score);
+    EXPECT_EQ(0, score.value);
+    EXPECT_FALSE(score.isMate);
 }
 
 TEST(TestPieceCountEvaluator, Endgame) {
