@@ -289,6 +289,19 @@ namespace chess {
     }
 
     bool State::isGameOver() const{
+        if (isInsufficient()) return true;
         return legalMoves().empty();
     }
+
+    bool State::isInsufficient() const {
+        unsigned pieceCount = std::popcount(bitboard.occupied_black|bitboard.occupied_white);
+        // king vs king
+        if (pieceCount == 2) return true;
+        // king vs king and (knight | bishop)
+        if (pieceCount == 3 && (bitboard.knights | bitboard.bishops) != 0) return true;
+        // king and bishop vs king and bishop (same square)
+        if (pieceCount == 4 && std::popcount(bitboard.bishops) == 2 &&  std::popcount(bitboard.bishops&0xAA55AA55AA55AA55ull) != 1) return true;
+        return false;
+    }
+
 }

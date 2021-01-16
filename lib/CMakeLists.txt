@@ -4,7 +4,7 @@ set(
         "Bitboard.cpp"
         "State.cpp"
         "Move.cpp"
-        eval/Evaluator.cpp eval/Evaluator.hpp eval/Score.cpp eval/Score.hpp eval/PieceCountEvaluator.cpp eval/PieceCountEvaluator.hpp)
+        eval/Evaluator.cpp eval/Evaluator.hpp eval/Score.cpp eval/Score.hpp eval/PieceCountEvaluator.cpp eval/PieceCountEvaluator.hpp search/Search.cpp search/Search.hpp Clock.cpp Clock.hpp search/AlphaBetaSearch.cpp search/AlphaBetaSearch.hpp)
 
 add_library(
         chess_core

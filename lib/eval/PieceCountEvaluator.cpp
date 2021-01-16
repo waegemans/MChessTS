@@ -3,7 +3,7 @@
 #include <bit>
 
 namespace chess {
-    Score PieceCountEvaluator::evalNotGameOver(chess::State &state) {
+    Score PieceCountEvaluator::evalNotGameOver(const State &state) const {
         int cpValue = 0;
         const auto& bitboard = state.getBitboard();
         cpValue += 100*std::popcount(bitboard.getPawns() & bitboard.occupied_white);

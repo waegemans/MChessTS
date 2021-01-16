@@ -4,6 +4,6 @@
 
 namespace chess {
 class PieceCountEvaluator : public Evaluator {
-    Score evalNotGameOver(State &state) override;
+    Score evalNotGameOver(const State &state) const override;
 };
 }

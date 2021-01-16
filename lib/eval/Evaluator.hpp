@@ -7,9 +7,9 @@ namespace chess {
 
 class Evaluator {
 private:
-    virtual Score evalNotGameOver(State&) = 0;
+    [[nodiscard]] virtual Score evalNotGameOver(const State&) const = 0;
 public:
-    Score operator()(State&);
+    Score operator()(const State&) const;
 };
 
 } // namespace chess

@@ -2,7 +2,7 @@
 
 #include <bit>
 namespace chess {
-    Score Evaluator::operator()(State &state) {
+    Score Evaluator::operator()(const State &state) const {
         if (state.isGameOver()) {
             if (state.isCheck()) {
                 return Score(true, state.getPov() ? -1 : 1);

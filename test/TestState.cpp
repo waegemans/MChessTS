@@ -192,3 +192,11 @@ TEST(TestState, PromotionKnight) {
     auto moves = state.legalMoves();
     EXPECT_EQ(moves.size(), 12);
 }
+
+TEST(TestState, GameOver) {
+    chess::State state;
+    state.parseFen("3Qk3/8/8/5K2/8/8/8/8 b - - 0 1");
+    EXPECT_FALSE(state.isGameOver());
+    state.parseFen("3Rk3/8/6K1/8/8/8/8/8 b - - 0 1");
+    EXPECT_FALSE(state.isGameOver());
+}

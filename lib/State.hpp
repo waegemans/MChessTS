@@ -35,5 +35,6 @@ public:
 
     bool isCheck() const;
     bool isGameOver() const;
+    bool isInsufficient() const;
 };
 }
