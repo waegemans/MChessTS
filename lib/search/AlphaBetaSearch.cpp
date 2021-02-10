@@ -2,39 +2,64 @@
 #include "AlphaBetaSearch.hpp"
 
 #include <cassert>
-#include <iostream>
 #include <vector>
+#include <chrono>
+#include <thread>
+#include <iostream>
 
 namespace chess {
     Move AlphaBetaSearch::findNextMove(const State &state, const Clock &clock) {
-        std::stack<Move> line;
-        for (unsigned depth = 1; clock.white_time_ms == 0 && depth < 10; depth++) {
-            auto score = search(state, depth, state.getPov(), std::nullopt, std::nullopt, line);
+        Move bestMove{0,0};
+        std::atomic<bool> stop = false;
+        auto worker = std::thread(iterativeDeepeningSearch,std::ref(state),std::ref(evaluator), std::ref(bestMove),std::ref(stop));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(state.getPov() ? clock.white_increment_ms : clock.black_increment_ms));
+        stop = true;
+        worker.join();
+        return bestMove;
+    }
+
+    void AlphaBetaSearch::iterativeDeepeningSearch(const State& state, const Evaluator& evaluator, Move& bestMove, std::atomic<bool>& stop) {
+        std::vector<Move> pv;
+        unsigned depth;
+        for (depth = 1; !stop ; depth++) {
+            std::vector<Move> line;
+            auto score = search(state, depth, state.getPov(), std::nullopt, std::nullopt, line, pv.cbegin(), pv.cend(), evaluator, stop);
+            pv = std::move(line);
+            if (!stop || depth==1) bestMove = pv.front();
             if (score.isMate) {
                 break;
             }
         }
-        return line.top();
+        std::cerr << "info depth " << depth << std::endl;
     }
 
-    Score AlphaBetaSearch::search(const State &state, unsigned depth, bool max, std::optional<Score> alpha,
-                                  std::optional<Score> beta, std::stack<Move> &line) {
-        if (depth == 0 || state.isGameOver()) {
-            return Search::evaluator(state);
+    Score AlphaBetaSearch::search(const State &state, unsigned maxDepth, bool max, std::optional<Score> alpha,
+                                  std::optional<Score> beta, std::vector<Move> &line, std::vector<Move>::const_iterator pvBegin, std::vector<Move>::const_iterator pvEnd,const Evaluator& evaluator, std::atomic<bool>& stop) {
+        if (maxDepth == 0 || state.isGameOver()|| stop) {
+            return evaluator(state);
         }
         std::optional<Score> bestScore;
         std::vector<std::pair<Move, State>> nextMoveStateVector{};
         for (const auto &move : state.legalMoves()) {
             nextMoveStateVector.emplace_back(move, state.applyMove(move));
         }
-        std::sort(nextMoveStateVector.begin(), nextMoveStateVector.end(), presortingLessThen(max));
+        std::optional<Move> pvMove;
+        if (pvBegin != pvEnd) {
+            pvMove = *pvBegin;
+        }
+        std::sort(nextMoveStateVector.begin(), nextMoveStateVector.end(), presortingLessThen(max,pvMove));
         for (const auto&[move, nextState] : nextMoveStateVector) {
-            std::stack<Move> nextLine;
-            auto nextScore = search(nextState, depth - 1, !max, alpha, beta, nextLine);
+            std::vector<Move> nextLine;
+            std::vector<Move>::const_iterator nextPvBegin = pvEnd;
+            if (pvBegin != pvEnd && move == *pvBegin) {
+                nextPvBegin = pvBegin+1;
+            }
+            auto nextScore = search(nextState, maxDepth - 1, !max, alpha, beta, nextLine, nextPvBegin, pvEnd,evaluator,stop);
             // update new optimum
             if (!bestScore || (max ? nextScore > bestScore.value() : nextScore < bestScore.value())) {
-                line = nextLine;
-                line.push(move);
+                line = std::move(nextLine);
+                line.insert(line.begin(),move);
                 bestScore = nextScore;
             }
             // alpha pruning
@@ -66,6 +91,10 @@ namespace chess {
 
 
     bool presortingLessThen::operator()(const std::pair<Move, State> &lhs, const std::pair<Move, State> &rhs) {
+        if(pvMove.has_value()) {
+            if (lhs.first == pvMove.value()) return true;
+            if (rhs.first == pvMove.value()) return false;
+        }
         bool leftCheck = lhs.second.isCheck();
         bool rightCheck = rhs.second.isCheck();
 

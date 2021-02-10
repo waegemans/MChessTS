@@ -133,7 +133,7 @@ namespace chess {
     void State::reset() {
         bitboard.startpos();
         pov = true;
-        castlingRights.reset();
+        castlingRights.set();
         enPassantFile.reset();
     }
 
@@ -233,12 +233,12 @@ namespace chess {
 
         // king moved disable castling
         if (bitboard.getKings()&fromMask) {
-            castlingRights[2*pov] = false;
-            castlingRights[2*pov+1] = false;
+            castlingRights[2*!pov] = false;
+            castlingRights[2*!pov+1] = false;
         }
 
 
-        if (bitboard.getKings()&fromMask && move.rowDistance() > 1) {
+        if (bitboard.getKings()&fromMask && move.fileDistance() > 1) {
             //castling move -> move rook first
             if (move.toSquare == 1) bitboard.applyMove(0, 2);
             if (move.toSquare == 5) bitboard.applyMove(7, 4);
@@ -303,6 +303,21 @@ namespace chess {
         // king and bishop vs king and bishop (same square)
         if (pieceCount == 4 && std::popcount(bitboard.bishops) == 2 &&  std::popcount(bitboard.bishops&0xAA55AA55AA55AA55ull) != 1) return true;
         return false;
+    }
+
+    bool State::canClaimDraw(const std::vector<State> &previousStates) const {
+        if (previousStates.empty()) {
+            return false;
+        }
+        return false;
+    }
+
+    bool State::operator==(const State &other) const {
+        return
+        bitboard == other.bitboard &&
+        pov == other.pov &&
+        castlingRights == other.castlingRights &&
+        enPassantFile == other.enPassantFile;
     }
 
 }

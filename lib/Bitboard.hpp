@@ -42,5 +42,7 @@ public:
 
   void applyMove(unsigned fromSquare, unsigned toSquare);
 
+  bool operator==(const Bitboard& other) const;
+
 }; // class Bitboard
 } // namespace chess

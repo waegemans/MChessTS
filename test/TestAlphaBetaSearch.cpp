@@ -4,12 +4,12 @@
 #include "eval/PieceCountEvaluator.hpp"
 
 namespace {
-    void expectUCI(std::string_view fen, std::string uci) {
+    void expectUCI(std::string_view fen, const std::string& uci) {
         chess::State state;
         chess::PieceCountEvaluator evaluator;
         chess::AlphaBetaSearch alphaBeta(evaluator);
         state.parseFen(fen);
-        auto bestMove = alphaBeta.findNextMove(state,{0,0,0,0});
+        auto bestMove = alphaBeta.findNextMove(state,{0,0,5000,5000});
         EXPECT_EQ(bestMove.toUCI(), uci);
     }
 }

@@ -10,13 +10,13 @@ namespace {
         EXPECT_EQ(moves.size(), move_count);
     }
 
-    void expect_fen_contains_ucis(std::string_view fen, const std::vector<std::string>& uci_vector) {
+    void expect_fen_contains_ucis(std::string_view fen, const std::vector<std::string>& uci_vector, bool onlyLegal=false) {
         auto state = chess::State();
         state.parseFen(fen);
-        auto moves = state.pseudoLegalMoves();
+        auto moves = onlyLegal ? state.legalMoves() : state.pseudoLegalMoves();
         for (const auto& uci : uci_vector) {
             auto move = chess::Move(uci);
-            EXPECT_TRUE(moves.count(move) == 1);
+            EXPECT_EQ(moves.count(move), 1);
         }
     }
 }
@@ -158,6 +158,38 @@ TEST(TestState, EnPassant) {
 
 TEST(TestState, EnPassantMateBlocked) {
     expect_fen_move_count("8/8/8/8/kpP4R/8/6K1/8 b - c3 0 1", 4, true);
+}
+
+TEST(TestState, RestrictedCaslte) {
+    expect_fen_move_count("1k1r1r2/8/8/8/8/8/8/R3K2R w KQ - 0 1", 20, true);
+}
+
+TEST(TestState, ActualError1) {
+    chess::State state;
+    state.reset();
+    std::vector<std::string> moveList {"e2e4", "d7d6", "g1f3", "c8d7", "d2d4", "d7a4", "b2b3", "a4b3", "c2b3", "d8c8", "b1c3", "b8d7", "f1c4", "h7h5", "c1f4", "a8b8", "e1g1", "g8h6", "e4e5", "d7e5", "d4e5", "g7g5", "f4g5", "h6f5", "e5d6", "c7d6", "f1e1", "a7a6", "g5e7", "c8c4", "b3c4"};
+    for (auto const& uciStr : moveList) {
+        chess::Move move (uciStr);
+        state.applyMoveSelf(move);
+    }
+
+    chess::State state2;
+    state2.parseFen("1r2kb1r/1p2Bp2/p2p4/5n1p/2P5/2N2N2/P4PPP/R2QR1K1 b k - 0 16");
+
+    EXPECT_EQ(state,state2);
+}
+TEST(TestState, ActualError2) {
+    expect_fen_move_count("2b3q1/2pkpp2/p2p4/3P1P1p/7P/n5P1/1p4K1/8 b - - 2 44",6+4+2+1+4+10,true);//pawn+promote+king+bishop+knight+queen
+}
+
+TEST(TestState, ApplyCastling) {
+    chess::State state,endState;
+    state.parseFen("1rq1kbnr/pppnppp1/3p4/7p/2BPPB2/1PN2N2/P4PPP/R2QK2R w KQk - 2 9");
+    endState.parseFen("1rq1kbnr/pppnppp1/3p4/7p/2BPPB2/1PN2N2/P4PPP/R2Q1RK1 b k - 3 9");
+
+    state.applyMoveSelf(chess::Move("e1g1"));
+    EXPECT_EQ(state,endState);
+
 }
 
 TEST(TestState, PromotionQueen) {

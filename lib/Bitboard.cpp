@@ -152,4 +152,16 @@ namespace chess {
         occupied_black = (occupied_black & otherMask) | ( (occupied_black&fromMask) !=0)*toMask;
     }
 
+    bool Bitboard::operator==(const Bitboard &other) const {
+        return
+        kings == other.kings &&
+        queens == other.queens &&
+        rooks == other.rooks &&
+        knights == other.knights &&
+        bishops == other.bishops &&
+        pawns == other.pawns &&
+        occupied_white == other.occupied_white &&
+        occupied_black == other.occupied_black;
+    }
+
 } // namespace chess

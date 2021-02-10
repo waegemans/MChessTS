@@ -1,10 +1,9 @@
 add_executable(
-        chess_main
-        main.cpp
-)
+        chess_uci
+        main.cpp)
 
 target_link_libraries(
-        chess_main
+        chess_uci
         PUBLIC
         chess_core
 )

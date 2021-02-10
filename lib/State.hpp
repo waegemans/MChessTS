@@ -5,6 +5,7 @@
 
 #include <bitset>
 #include <unordered_set>
+#include <vector>
 
 namespace chess {
 class State {
@@ -36,5 +37,8 @@ public:
     bool isCheck() const;
     bool isGameOver() const;
     bool isInsufficient() const;
+    bool canClaimDraw(const std::vector<State>& previousStates) const;
+
+    bool operator==(const State& other) const;
 };
 }
