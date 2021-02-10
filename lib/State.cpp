@@ -190,6 +190,17 @@ namespace chess {
         auto pseudoLegal = pseudoLegalMoves();
         std::unordered_set<Move, HashMove> legal;
         for (const auto& move: pseudoLegal) {
+            //castling move
+            if (((1ull<<move.fromSquare)&bitboard.getKings()) != 0 && move.fileDistance() == 2) {
+                // cannot castle while checked
+                if (isCheck()) continue;
+
+                // cannot castle over controlled square
+                Move oneStepKingMove(move.fromSquare, move.fromSquare<move.toSquare ? move.toSquare-1: move.toSquare+1);
+                auto oneStepKingState = applyMove(oneStepKingMove);
+                if (!oneStepKingState.isLegal()) continue;
+
+            }
             auto nextState = applyMove(move);
             if (nextState.isLegal()) legal.insert(move);
         }

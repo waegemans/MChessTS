@@ -160,7 +160,7 @@ TEST(TestState, EnPassantMateBlocked) {
     expect_fen_move_count("8/8/8/8/kpP4R/8/6K1/8 b - c3 0 1", 4, true);
 }
 
-TEST(TestState, RestrictedCaslte) {
+TEST(TestState, RestrictedCastle) {
     expect_fen_move_count("1k1r1r2/8/8/8/8/8/8/R3K2R w KQ - 0 1", 20, true);
 }
 TEST(TestState, CastleWhileChecked) {
