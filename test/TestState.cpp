@@ -163,6 +163,10 @@ TEST(TestState, EnPassantMateBlocked) {
 TEST(TestState, RestrictedCaslte) {
     expect_fen_move_count("1k1r1r2/8/8/8/8/8/8/R3K2R w KQ - 0 1", 20, true);
 }
+TEST(TestState, CastleWhileChecked) {
+    expect_fen_move_count("r2r2k1/p1p2ppp/8/1p2P3/1Qb1q2P/2P5/P1P3P1/R3K2R w KQ - 0 19",1,true);
+    expect_fen_contains_ucis("r2r2k1/p1p2ppp/8/1p2P3/1Qb1q2P/2P5/P1P3P1/R3K2R w KQ - 0 19", {"e1f2"});
+}
 
 TEST(TestState, ActualError1) {
     chess::State state;
