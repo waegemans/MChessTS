@@ -48,10 +48,13 @@ namespace chess {
         if (pvBegin != pvEnd) {
             pvMove = *pvBegin;
         }
-        std::sort(nextMoveStateVector.begin(), nextMoveStateVector.end(), presortingLessThen(max,pvMove));
-        for (const auto&[move, nextState] : nextMoveStateVector) {
+        //std::sort(nextMoveStateVector.begin(), nextMoveStateVector.end(), presortingLessThen(max,pvMove));
+        for (auto it = nextMoveStateVector.begin(); it != nextMoveStateVector.end(); it++) {
+            // move best value to front
+            std::iter_swap(it, std::min_element(it, nextMoveStateVector.end(),presortingLessThen(max,pvMove)));
+            auto [move,nextState] = *it;
             std::vector<Move> nextLine;
-            std::vector<Move>::const_iterator nextPvBegin = pvEnd;
+            auto nextPvBegin = pvEnd;
             if (pvBegin != pvEnd && move == *pvBegin) {
                 nextPvBegin = pvBegin+1;
             }
