@@ -135,9 +135,13 @@ namespace chess {
         pov = true;
         castlingRights.set();
         enPassantFile.reset();
+
+        isCheckCache.reset();
+        isGameOverCache.reset();
     }
 
     void State::parseFen(std::string_view fen) {
+        reset();
         auto board_fen_end = fen.find(' ');
         auto color_fen_end = fen.find(' ', board_fen_end+1);
         auto castling_fen_end = fen.find(' ', color_fen_end+1);
@@ -229,6 +233,8 @@ namespace chess {
     }
 
     void State::applyMoveSelf(Move move) {
+        isGameOverCache.reset();
+        isCheckCache.reset();
         uint64_t fromMask = 1ull<<move.fromSquare;
         uint64_t toMask = 1ull<<move.toSquare;
 
@@ -296,13 +302,20 @@ namespace chess {
     }
 
     bool State::isCheck() const{
+        if (isCheckCache.has_value()) return isCheckCache.value();
+
         bool retVal = !isLegal(true);
+        isCheckCache = retVal;
         return retVal;
     }
 
     bool State::isGameOver() const{
-        if (isInsufficient()) return true;
-        return legalMoves().empty();
+        if (isGameOverCache.has_value()) return isGameOverCache.value();
+        bool retVal;
+        if (isInsufficient()) retVal = true;
+        else retVal = legalMoves().empty();
+        isGameOverCache = retVal;
+        return retVal;
     }
 
     bool State::isInsufficient() const {

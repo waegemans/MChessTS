@@ -18,7 +18,11 @@ private:
   unsigned halfMoveCount;
   unsigned fullMoveCount;
 
-  void parseCastlingFen(std::string_view);
+    mutable std::optional<bool> isCheckCache;
+    mutable std::optional<bool> isGameOverCache;
+
+
+    void parseCastlingFen(std::string_view);
   void parseEnPassantFen(std::string_view en_passant_fen);
   [[nodiscard]] bool isLegal(bool flipPov = false) const;
 
