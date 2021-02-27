@@ -16,13 +16,23 @@ namespace chess {
     }
 
     void Bitboard::evalAttack() const {
-        pinned = 0;
-        controlled = 0;
-        checks = 0;
+        if (cachedAttack)
+            return;
         evalQueenLikeAttack();
         evalKnightAttack();
         evalPawnAttack();
         evalKingAttack();
+        cachedAttack = true;
+    }
+
+    void Bitboard::resetCachedAttack() const {
+        pinnedHorizontal = 0;
+        pinnedVertical = 0;
+        pinnedDiagonal = 0;
+        pinnedAntidiagonal = 0;
+        controlled = 0;
+        checks = 0;
+        cachedAttack = false;
     }
 
     void Bitboard::evalPawnAttack() const {
@@ -73,7 +83,7 @@ namespace chess {
             uint64_t enemyXrayContolledOccupied = enemyXrayControlled & occupied();
 
             // update last free
-            lastFree &= applyOffset(-left, -up, enemyControlled & (~occupied()));
+            lastFree &= applyOffset(-left, -up, enemyControlled & (~occupied() | ownKing));
             // mark piece that is the reason for a pin
             pinAttacker |= applyOffset(-left, -up, enemyXrayControlled & ownKing);
             // deactivate xray on second collision
@@ -87,7 +97,7 @@ namespace chess {
         }
         if (pinAttacker) {
             for (int step = 1; step < 8; step++) {
-                pinned |= applyOffset(step * dleft, step * dup, xRayLevel[step] & pinAttacker);
+                relevantPinMap(dleft, dup) |= applyOffset(step * dleft, step * dup, xRayLevel[step] & pinAttacker);
             }
         }
 
@@ -219,7 +229,7 @@ namespace chess {
         }
     }
 
-    std::string Bitboard::to_fen() { throw std::logic_error("Not implemented!"); }
+    std::string Bitboard::to_fen() const { throw std::logic_error("Not implemented!"); }
 
     std::string Bitboard::to_string() const {
         std::string retVal(8 * 9, '.');
@@ -292,6 +302,9 @@ namespace chess {
         // capture or pawn
         if (isPawn || toMask&occupied()) {
             halfMoveCounter = 0;
+        }
+        else {
+            halfMoveCounter += 1;
         }
         // increment move counter
         moveCounter += pov ? 0 : 1;
@@ -475,6 +488,17 @@ namespace chess {
         Bitboard nextBoard = *this;
         nextBoard.applyMoveSelf(move);
         return nextBoard;
+    }
+
+    uint64_t &Bitboard::relevantPinMap(int dx, int dy) const {
+        assert (dx != 0 || dy != 0);
+
+        if (dx == 0) return pinnedVertical;
+        if (dy == 0) return pinnedHorizontal;
+        if (dx == dy) return pinnedDiagonal;
+
+        assert(dx == -dy);
+        return pinnedAntidiagonal;
     }
 
 } // namespace chess

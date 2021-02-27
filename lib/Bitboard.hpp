@@ -30,8 +30,12 @@ namespace chess {
         unsigned halfMoveCounter;
 
         mutable uint64_t controlled;
-        mutable uint64_t pinned;
+        mutable uint64_t pinnedHorizontal;
+        mutable uint64_t pinnedVertical;
+        mutable uint64_t pinnedDiagonal;
+        mutable uint64_t pinnedAntidiagonal;
         mutable uint64_t checks;
+        mutable bool cachedAttack;
 
     private:
         void evalPawnAttack() const;
@@ -43,6 +47,13 @@ namespace chess {
         void evalKingAttack() const;
 
         void evalKnightAttack() const;
+
+        void evalEnPassantPin() const;
+
+        uint64_t &relevantPinMap(int dx, int dy) const;
+
+        void resetCachedAttack() const;
+
 
     public:
         [[nodiscard]] uint64_t getKings() const { return kings; };
@@ -57,11 +68,11 @@ namespace chess {
 
         [[nodiscard]] uint64_t getPawns() const { return pawns; };
 
-        bool getPov() const { return pov; };
+        [[nodiscard]] bool getPov() const { return pov; };
 
-        const std::bitset<4> &getCastlingRights() const { return castlingRights; };
+        [[nodiscard]] const std::bitset<4> &getCastlingRights() const { return castlingRights; };
 
-        const std::optional<unsigned int> &getEnPassantFile() const { return enPassantFile; };
+        [[nodiscard]] const std::optional<unsigned int> &getEnPassantFile() const { return enPassantFile; };
 
         [[nodiscard]] uint64_t getOccupied(bool color) const { return color ? occupiedWhite : occupiedBlack; };
 
@@ -69,7 +80,19 @@ namespace chess {
 
         [[nodiscard]] uint64_t getControlled() const { return controlled; };
 
-        [[nodiscard]] uint64_t getPinned() const { return pinned; };
+        unsigned int getMoveCounter() const { return moveCounter; };
+
+        unsigned int getHalfMoveCounter() const { return halfMoveCounter; };
+
+        uint64_t getPinnedHorizontal() const { return pinnedHorizontal; };
+
+        uint64_t getPinnedVertical() const { return pinnedVertical; };
+
+        uint64_t getPinnedDiagonal() const { return pinnedDiagonal; };
+
+        uint64_t getPinnedAntidiagonal() const { return pinnedAntidiagonal; };
+
+        bool isCachedAttack() const { return cachedAttack; };
 
         [[nodiscard]] uint64_t getChecks() const { return checks; };
 
@@ -89,21 +112,30 @@ namespace chess {
         void parseEnPassantFEN(std::string_view enPassantFen);
 
     public:
-        std::string to_fen();
+        std::string to_fen() const;
 
         [[nodiscard]] std::string to_string() const;
 
 
-        void applyMoveSelf(const Move& move);
-        Bitboard applyMoveCopy(const Move& move) const;
+        void applyMoveSelf(const Move &move);
+
+        Bitboard applyMoveCopy(const Move &move) const;
+
     private:
-        void preApplyPromotion(uint64_t fromMask, const Move& move);
-        void preApplyCastling(const Move& move);
-        void preApplyToggleEnPassant(const Move& move);
+        void preApplyPromotion(uint64_t fromMask, const Move &move);
+
+        void preApplyCastling(const Move &move);
+
+        void preApplyToggleEnPassant(const Move &move);
+
         void preApplyEnPassantCapture(unsigned toSquare);
+
         void preApplyRemoveCastlingKingMove();
-        void preApplyRemoveCastlingRook(const Move& move);
+
+        void preApplyRemoveCastlingRook(const Move &move);
+
         void movePiece(unsigned fromSquare, unsigned toSquare);
+
         void evalEnPassantLegality();
 
     public:

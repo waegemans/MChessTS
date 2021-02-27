@@ -101,31 +101,38 @@ TEST(TestBitboard, controllKing) {
     EXPECT_EQ(bitboard.getControlled(), 0x302);
 }
 
+TEST(TestBitboard, controllXrayKing) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("k7/8/8/8/8/2K3r1/8/8 w - - 0 1");
+    bitboard.evalAttack();
+    EXPECT_EQ(bitboard.getControlled(), 0x42c2020202fd0202ull);
+
+}
 TEST(TestBitboard, simplePin) {
     auto bitboard = chess::Bitboard();
     bitboard.parseFEN("8/8/8/8/8/8/2Q2p1k/8 b - - 0 1");
     bitboard.evalAttack();
-    EXPECT_EQ(bitboard.getPinned(), 0x400);
+    EXPECT_EQ(bitboard.getPinnedHorizontal(), 0x400);
 }
 
 TEST(TestBitboard, simpleNoPin) {
     auto bitboard = chess::Bitboard();
     bitboard.parseFEN("8/8/8/8/8/8/2Q2p2/7k b - - 0 1");
     bitboard.evalAttack();
-    EXPECT_EQ(bitboard.getPinned(), 0x0);
+    EXPECT_EQ(bitboard.getPinnedHorizontal(), 0x0);
 }
 
 TEST(TestBitboard, blockedPinInfront) {
     auto bitboard = chess::Bitboard();
     bitboard.parseFEN("8/8/8/8/8/8/2Q1Pp1k/8 b - - 0 1");
     bitboard.evalAttack();
-    EXPECT_EQ(bitboard.getPinned(), 0x0);
+    EXPECT_EQ(bitboard.getPinnedHorizontal(), 0x0);
 }
 TEST(TestBitboard, blockedPinBehind) {
     auto bitboard = chess::Bitboard();
     bitboard.parseFEN("8/8/8/8/8/8/2Q1pP1k/8 b - - 0 1");
     bitboard.evalAttack();
-    EXPECT_EQ(bitboard.getPinned(), 0x0);
+    EXPECT_EQ(bitboard.getPinnedHorizontal(), 0x0);
 }
 
 
@@ -133,7 +140,7 @@ TEST(TestBitboard, blockedPinDouble) {
     auto bitboard = chess::Bitboard();
     bitboard.parseFEN("8/8/8/8/8/8/2Q2ppk/8 b - - 0 1");
     bitboard.evalAttack();
-    EXPECT_EQ(bitboard.getPinned(), 0x0);
+    EXPECT_EQ(bitboard.getPinnedHorizontal(), 0x0);
 }
 
 TEST(TestBitboard, check) {
