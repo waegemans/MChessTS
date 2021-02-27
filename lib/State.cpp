@@ -1,4 +1,5 @@
 #include "State.hpp"
+#include "Bitboard.hpp"
 
 #include <cassert>
 #include <bit>
@@ -155,7 +156,7 @@ namespace chess {
         std::string_view en_passant_fen = fen.substr(castling_fen_end+1, en_passant_fen_end - castling_fen_end-1);
 
 
-        bitboard.parse_fen(board_fen);
+        bitboard.parseBoardFEN(board_fen);
         assert (color_fen == "w" or color_fen == "b");
         pov = (color_fen == "w");
         parseCastlingFen(castling_fen);
@@ -286,8 +287,8 @@ namespace chess {
         if (bitboard.getPawns()&fromMask && move.fileDistance() == 1 && (bitboard.getOccupiedPov(!pov)&toMask) == 0) {
             uint64_t eraseMask = pov ? toMask >> 8u : toMask << 8u;
             bitboard.pawns &= ~eraseMask;
-            if (pov) bitboard.occupied_black &= ~eraseMask;
-            else bitboard.occupied_white &= ~eraseMask;
+            if (pov) bitboard.occupiedBlack &= ~eraseMask;
+            else bitboard.occupiedWhite &= ~eraseMask;
         }
         if (bitboard.getPawns()&fromMask && move.rowDistance() > 1) {
             // activate en passant for double pawn move
@@ -319,7 +320,7 @@ namespace chess {
     }
 
     bool State::isInsufficient() const {
-        unsigned pieceCount = std::popcount(bitboard.occupied_black|bitboard.occupied_white);
+        unsigned pieceCount = std::popcount(bitboard.occupiedBlack | bitboard.occupiedWhite);
         // king vs king
         if (pieceCount == 2) return true;
         // king vs king and (knight | bishop)

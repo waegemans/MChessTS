@@ -61,7 +61,7 @@ std::string Move::toUCI() const {
         return fromFile > toFile ? fromFile-toFile : toFile - fromFile;
     }
 
-    unsigned Move::rowDistance() const {
+    unsigned Move::rankDistance() const {
         auto fromRow = fromSquare/8;
         auto toRow = toSquare/8;
 

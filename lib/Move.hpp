@@ -18,7 +18,7 @@ public:
   explicit Move(std::string_view uci);
   [[nodiscard]] std::string toUCI() const;
   [[nodiscard]] unsigned fileDistance() const;
-  [[nodiscard]] unsigned rowDistance() const;
+  [[nodiscard]] unsigned rankDistance() const;
 };
 
 bool operator== (const Move&, const Move&);

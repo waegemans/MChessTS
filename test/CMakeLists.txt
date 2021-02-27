@@ -3,9 +3,7 @@ set(
 
         TestBitboard.cpp
         TestMove.cpp
-        TestState.cpp
-        Tester.cpp
-        TestScore.cpp TestPieceCountEvaluator.cpp TestAlphaBetaSearch.cpp)
+        Tester.cpp)
 
 add_executable(tester ${TEST_SOURCES})
 target_link_libraries(
