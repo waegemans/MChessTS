@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 #include <bitset>
-#include <cassert>
+#include <vector>
 #include <cstring>
 #include <stdexcept>
 #include "Move.hpp"
@@ -51,6 +51,8 @@ namespace chess {
         void evalEnPassantPin() const;
 
         uint64_t &relevantPinMap(int dx, int dy) const;
+        uint64_t pinnedAny() const;
+        uint64_t pinnedForDirection(int dx, int dy) const;
 
         void resetCachedAttack() const;
 
@@ -102,6 +104,22 @@ namespace chess {
 
         void parseFEN(std::string_view fen);
 
+        std::vector<Move> legalMoves() const;
+
+    private:
+        void kingMoves(std::vector<Move> &result) const;
+
+        uint64_t getCheckBlockCaptureSquares() const;
+
+        void queenLikeMoves(std::vector<Move> &result, uint64_t targetSquares) const;
+        void queenLikeMovesSingleRay(std::vector<Move> &result, uint64_t targetSquares, int dx, int dy) const;
+
+        void knightMoves(std::vector<Move> &result, uint64_t targetSquares) const;
+
+        void pawnMoves(std::vector<Move> &result, uint64_t targetSquares) const;
+
+        void castlingMoves(std::vector<Move> &result) const;
+
     private:
         void parseBoardFEN(std::string_view boardFen);
 
@@ -144,5 +162,8 @@ namespace chess {
         static constexpr uint64_t canMoveToMask(int left, int up);
 
         static constexpr uint64_t applyOffset(int left, int up, uint64_t board);
+
+        static void appendMoves(std::vector<Move>& result, uint64_t movablePieces, int dx, int dy, uint64_t promotable = 0);
+
     }; // class Bitboard
 } // namespace chess

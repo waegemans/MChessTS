@@ -2,6 +2,7 @@
 
 #include "Bitboard.hpp"
 
+#define MOVE_IN(legalMoves, move) EXPECT_TRUE(std::find(legalMoves.begin(), legalMoves.end(), chess::Move(move)) != legalMoves.end())
 
 TEST(TestBitboard, parseStartposFen) {
   auto bitboard = chess::Bitboard();
@@ -201,3 +202,151 @@ TEST(TestBitboard, applyIllegalEnPassant) {
     bitboard.applyMoveSelf(chess::Move("e7e5"));
     EXPECT_FALSE(bitboard.getEnPassantFile());
 }
+
+TEST(TestBitboard, kingMoves) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("8/5k2/8/4pn2/4P3/3K4/8/8 w - - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(), 6);
+    MOVE_IN(legalMoves, "d3e2");
+    MOVE_IN(legalMoves, "d3d2");
+    MOVE_IN(legalMoves, "d3c2");
+    MOVE_IN(legalMoves, "d3c3");
+    MOVE_IN(legalMoves, "d3c4");
+    MOVE_IN(legalMoves, "e4f5");
+}
+
+TEST(TestBitboard, rookMoves) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("7k/8/8/8/8/7p/7P/6RK w - - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(), 6+7);
+    MOVE_IN(legalMoves, "g1g2");
+    MOVE_IN(legalMoves, "g1g3");
+    MOVE_IN(legalMoves, "g1g4");
+    MOVE_IN(legalMoves, "g1g5");
+    MOVE_IN(legalMoves, "g1g6");
+    MOVE_IN(legalMoves, "g1g7");
+    MOVE_IN(legalMoves, "g1g8");
+
+    MOVE_IN(legalMoves, "g1a1");
+    MOVE_IN(legalMoves, "g1b1");
+    MOVE_IN(legalMoves, "g1c1");
+    MOVE_IN(legalMoves, "g1d1");
+    MOVE_IN(legalMoves, "g1e1");
+    MOVE_IN(legalMoves, "g1f1");
+}
+
+TEST(TestBitboard, rookBlockCheck) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("7k/8/2b5/8/8/7p/7P/6RK w - - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(), 1);
+    MOVE_IN(legalMoves, "g1g2");
+}
+TEST(TestBitboard, knightPinned) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("8/6k1/2b5/3N4/8/7p/7P/7K w - - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(), 1);
+    MOVE_IN(legalMoves, "h1g1");
+}
+TEST(TestBitboard, bishopWeakPinned) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("8/6k1/2b5/3B4/8/7p/7P/7K w - - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(), 5);
+    MOVE_IN(legalMoves, "d5c6");
+    MOVE_IN(legalMoves, "d5e4");
+    MOVE_IN(legalMoves, "d5f3");
+    MOVE_IN(legalMoves, "d5g2");
+
+    MOVE_IN(legalMoves, "h1g1");
+}
+
+TEST(TestBitboard, knightBlockCheck) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("7k/8/2b5/8/5N2/7p/7P/6BK w - - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(), 2);
+    MOVE_IN(legalMoves, "f4g2");
+    MOVE_IN(legalMoves, "f4d5");
+}
+
+TEST(TestBitboard, pawnPush) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("8/1pr4k/1P6/4n1P1/2pP4/7p/2P2P1P/7K w - - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(), 8);
+    MOVE_IN(legalMoves, "b6c7");
+    MOVE_IN(legalMoves, "c2c3");
+    MOVE_IN(legalMoves, "d4d5");
+    MOVE_IN(legalMoves, "d4e5");
+    MOVE_IN(legalMoves, "f2f3");
+    MOVE_IN(legalMoves, "f2f4");
+    MOVE_IN(legalMoves, "g5g6");
+    MOVE_IN(legalMoves, "h1g1");
+}
+
+TEST(TestBitboard, pawnPromote) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("2b5/1P6/7k/8/8/8/5K2/8 w - - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(), 8+8);
+    MOVE_IN(legalMoves, "b7b8q");
+    MOVE_IN(legalMoves, "b7b8r");
+    MOVE_IN(legalMoves, "b7b8b");
+    MOVE_IN(legalMoves, "b7b8n");
+
+    MOVE_IN(legalMoves, "b7c8q");
+    MOVE_IN(legalMoves, "b7c8r");
+    MOVE_IN(legalMoves, "b7c8b");
+    MOVE_IN(legalMoves, "b7c8n");
+
+    MOVE_IN(legalMoves, "f2e1");
+    MOVE_IN(legalMoves, "f2e2");
+    MOVE_IN(legalMoves, "f2e3");
+
+    MOVE_IN(legalMoves, "f2f1");
+    MOVE_IN(legalMoves, "f2f3");
+
+
+    MOVE_IN(legalMoves, "f2g1");
+    MOVE_IN(legalMoves, "f2g2");
+    MOVE_IN(legalMoves, "f2g3");
+}
+
+TEST(TestBitboard, legalCastling) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("4k3/8/8/8/8/p3p2p/P3P2P/R3K2R w KQ - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(), 4 + 3 + 2);
+
+    MOVE_IN(legalMoves, "a1b1");
+    MOVE_IN(legalMoves, "a1c1");
+    MOVE_IN(legalMoves, "a1d1");
+
+    MOVE_IN(legalMoves, "e1c1");
+    MOVE_IN(legalMoves, "e1d1");
+    MOVE_IN(legalMoves, "e1f1");
+    MOVE_IN(legalMoves, "e1g1");
+
+    MOVE_IN(legalMoves, "h1f1");
+    MOVE_IN(legalMoves, "h1g1");
+}
+
+TEST(TestBitboard, blockedCastling) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("3rkr2/8/8/8/8/p3p2p/P3P2P/R3K2R w KQ - 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(),  3 + 2);
+
+    MOVE_IN(legalMoves, "a1b1");
+    MOVE_IN(legalMoves, "a1c1");
+    MOVE_IN(legalMoves, "a1d1");
+
+    MOVE_IN(legalMoves, "h1f1");
+    MOVE_IN(legalMoves, "h1g1");
+}
+
+

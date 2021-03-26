@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 #include <stdexcept>
+#include <bit>
 
 namespace chess {
     namespace {
@@ -152,6 +153,8 @@ namespace chess {
         parseCastlingFEN(castling_fen);
         parseEnPassantFEN(en_passant_fen);
 
+        resetCachedAttack();
+
     }
 
     void Bitboard::parseBoardFEN(std::string_view boardFen) {
@@ -269,11 +272,12 @@ namespace chess {
         pov = true;
         castlingRights.set();
         enPassantFile.reset();
+        resetCachedAttack();
     }
 
     void Bitboard::applyMoveSelf(const Move &move) {
-        uint64_t fromMask = 1ull<<move.fromSquare;
-        uint64_t toMask = 1ull<<move.toSquare;
+        uint64_t fromMask = 1ull << move.fromSquare;
+        uint64_t toMask = 1ull << move.toSquare;
 
         bool isPawn = pawns & fromMask;
         bool isKing = kings & fromMask;
@@ -288,7 +292,7 @@ namespace chess {
             preApplyCastling(move);
         }
         // en passant capture (pawn capturing on a unoccupied square)
-        if (isPawn && move.fileDistance() == 1 && toMask & ~occupied()){
+        if (isPawn && move.fileDistance() == 1 && toMask & ~occupied()) {
             preApplyEnPassantCapture(move.toSquare);
         }
         // toggle en passant
@@ -300,10 +304,9 @@ namespace chess {
         // disable castle (rook)
         preApplyRemoveCastlingRook(move);
         // capture or pawn
-        if (isPawn || toMask&occupied()) {
+        if (isPawn || toMask & occupied()) {
             halfMoveCounter = 0;
-        }
-        else {
+        } else {
             halfMoveCounter += 1;
         }
         // increment move counter
@@ -312,6 +315,8 @@ namespace chess {
         movePiece(move.fromSquare, move.toSquare);
         // flip pov
         pov = !pov;
+
+        resetCachedAttack();
         // check if enPassant can be captured legally
         //evalEnPassantLegality();
     }
@@ -321,7 +326,7 @@ namespace chess {
         pawns &= ~fromMask;
         assert(move.promotion.has_value());
 
-        switch(move.promotion.value()) {
+        switch (move.promotion.value()) {
             case 'q':
                 queens |= fromMask;
                 break;
@@ -346,16 +351,13 @@ namespace chess {
         if (move.toSquare == 5) {
             rookOrigin = 7;
             rookTarget = 4;
-        }
-        else if (move.toSquare == 57) {
+        } else if (move.toSquare == 57) {
             rookOrigin = 56;
             rookTarget = 58;
-        }
-        else if (move.toSquare == 61) {
+        } else if (move.toSquare == 61) {
             rookOrigin = 63;
             rookTarget = 60;
-        }
-        else {
+        } else {
             assert(move.toSquare == 1);
         }
         rooks &= ~(1ull << rookOrigin);
@@ -364,7 +366,7 @@ namespace chess {
     }
 
     void Bitboard::preApplyEnPassantCapture(unsigned int toSquare) {
-        unsigned capturedPawnSquare = toSquare + ( pov ? -8 : 8);
+        unsigned capturedPawnSquare = toSquare + (pov ? -8 : 8);
         // remove pawn
         uint64_t capturedPawnMask = 1ull << capturedPawnSquare;
         pawns &= ~capturedPawnMask;
@@ -378,7 +380,7 @@ namespace chess {
     }
 
     void Bitboard::preApplyRemoveCastlingRook(const Move &move) {
-        unsigned rookSquares[] = {0,7,56,63};
+        unsigned rookSquares[] = {0, 7, 56, 63};
         for (int i = 0; i < 4; i++) {
             if (move.toSquare == rookSquares[i] || move.fromSquare == rookSquares[i]) {
                 castlingRights[i] = false;
@@ -395,7 +397,7 @@ namespace chess {
         }
         // set en passant
         // legality of en passant will be evaluated at a later time
-        uint64_t enPassantRankMask = 0xffull << ((pov ? 3 : 4)*8);
+        uint64_t enPassantRankMask = 0xffull << ((pov ? 3 : 4) * 8);
         uint64_t pushedPawnMask = 1ull << move.toSquare;
         uint64_t captureSquaresMask = ((pushedPawnMask << 1) | (pushedPawnMask >> 1)) & enPassantRankMask;
         bool enemyPawnOnRelevantSquare = captureSquaresMask & pawns & getOccupied(!pov);
@@ -456,7 +458,7 @@ namespace chess {
             // 11111000
             rowMask <<= (-left);
         }
-        uint64_t mask;
+        uint64_t mask = 0;
         std::memset(&mask, rowMask, 8);
         if (up > 0) {
             // erase top rows
@@ -500,5 +502,193 @@ namespace chess {
         assert(dx == -dy);
         return pinnedAntidiagonal;
     }
+
+    uint64_t Bitboard::pinnedAny() const {
+        return pinnedVertical | pinnedHorizontal | pinnedDiagonal | pinnedAntidiagonal;
+    }
+
+    uint64_t Bitboard::pinnedForDirection(int dx, int dy) const {
+        return pinnedAny() & ~relevantPinMap(dx,dy);
+    }
+
+    std::vector<Move> Bitboard::legalMoves() const {
+        if (!cachedAttack) {
+            evalAttack();
+        }
+        assert(cachedAttack);
+
+        std::vector<Move> result;
+
+        // multiple checks
+        if (std::popcount(checks) >= 2) {
+            // step king
+            kingMoves(result);
+        }
+
+        uint64_t targets = ~0ull;
+
+        // single check
+        if (std::popcount(checks) == 1) {
+            targets = getCheckBlockCaptureSquares();
+        }
+
+        kingMoves(result);
+        queenLikeMoves(result, targets);
+        knightMoves(result, targets);
+        pawnMoves(result, targets);
+        castlingMoves(result);
+
+        return result;
+    }
+
+    /**
+     * Computes all legal king moves, excluding castling
+     * @param result vector to which the moves are appended to
+     */
+    void Bitboard::kingMoves(std::vector<Move> &result) const {
+        uint64_t ownKing = kings & getOccupied(pov);
+        assert(std::popcount(ownKing) == 1);
+        uint8_t kingpos = std::countr_zero(ownKing);
+
+        for (int dx : {-1, 0, 1}) {
+            for (int dy : {-1, 0, 1}) {
+                if (dx == 0 && dy == 0) continue;
+                if ((ownKing & canMoveToMask(dx, dy)) == 0) continue;
+                if ((applyOffset(dx, dy, ownKing) & ~controlled & ~getOccupied(pov)) == 0) continue;
+                result.emplace_back(kingpos, kingpos + dx + 8 * dy);
+            }
+        }
+    }
+
+    /**
+     * Get all squares on which a single check can be blocked or the attacking piece can be captured
+     * @return bitmap of all relevant squares
+     */
+    uint64_t Bitboard::getCheckBlockCaptureSquares() const {
+        assert(std::popcount(checks) == 1);
+        // knights and pawn attacks cannot be blocked
+        if ((knights | pawns) & checks) return checks;
+
+        uint8_t kingPos = std::countr_zero(kings & getOccupied(pov));
+        uint8_t checkPos = std::countr_zero(checks);
+
+        Move attack(checkPos, kingPos);
+        int length = std::max(attack.fileDistance(), attack.rankDistance());
+
+        int dx = (attack.toSquare % 8 < attack.fromSquare % 8 ? -1 : 1) * std::min(1u, attack.fileDistance());
+        int dy = (attack.toSquare / 8 < attack.fromSquare / 8 ? -1 : 1) * std::min(1u, attack.rankDistance());
+
+        uint64_t retval = checks;
+        for (int i = 1; i < length; i++) {
+            retval |= applyOffset(dx * i, dy * i, checks);
+        }
+        return retval;
+    }
+
+    /**
+     * Returns legal moves from queen like pieces (queen, rook, bishop)
+     * @param result vector to which the moves are appended to
+     * @param targetSquares bitboard denoting to which squares the move must go to
+     */
+    void Bitboard::queenLikeMoves(std::vector<Move> &result, uint64_t targetSquares) const {
+        for (int dx : {-1, 0, 1}) {
+            for (int dy : {-1, 0, 1}) {
+                if (dx == 0 && dy == 0) continue;
+                queenLikeMovesSingleRay(result, targetSquares, dx, dy);
+            }
+        }
+
+    }
+
+    void Bitboard::queenLikeMovesSingleRay(std::vector<Move> &result, uint64_t targetSquares, int dx, int dy) const {
+        uint64_t relevantPieces = (queens | (dx == 0 || dy == 0 ? rooks : bishops)) & getOccupied(pov);
+        uint64_t unpinnedPieces = relevantPieces&~pinnedForDirection(dx,dy);
+        uint64_t lastFree = unpinnedPieces;
+        for (int dist = 1; dist < 8; dist++) {
+            uint64_t movablePieces = lastFree & canMoveToMask(dx*dist, dy*dist) & applyOffset(-dx*dist, -dy*dist, ~getOccupied(pov) & targetSquares);
+            appendMoves(result, movablePieces, dx*dist, dy*dist);
+            lastFree &= applyOffset(-dx*dist, -dy*dist, ~occupied());
+        }
+    }
+
+    void Bitboard::knightMoves(std::vector<Move> &result, uint64_t targetSquares) const {
+        int dxArray[] = {-2, -2, -1, -1, 1, 1, 2, 2};
+        int dyArray[] = {-1, 1, -2, 2, -2, 2, -1, 1};
+        uint64_t relevantPieces = knights & getOccupied(pov) & ~pinnedAny();
+
+        for (unsigned idx = 0; idx < 8; idx++) {
+            int dx = dxArray[idx];
+            int dy = dyArray[idx];
+            uint64_t movablePieces = relevantPieces & canMoveToMask(dx,dy) & applyOffset(-dx, -dy, ~getOccupied(pov) & targetSquares);
+            appendMoves(result, movablePieces, dx, dy);
+        }
+    }
+
+    void Bitboard::pawnMoves(std::vector<Move> &result, uint64_t targetSquares) const {
+
+        uint64_t promotableRank = pov ? 0xffull << 8u*6u : 0xff00ull;
+        uint64_t startingRank = !pov ? 0xffull << 8u*6u : 0xff00ull;
+        uint64_t ownPawns = pawns & getOccupied(pov);
+        int dy = pov ? 1 : -1;
+
+        uint64_t pushable = ownPawns & ~pinnedForDirection(0,dy) & applyOffset(0, -dy, ~occupied());
+
+        // regular push
+        uint64_t movablePieces = pushable & applyOffset(0,-dy, targetSquares);
+        appendMoves(result, movablePieces, 0, dy, promotableRank);
+
+        // double push
+        movablePieces = pushable & startingRank & applyOffset(0,-2*dy, ~occupied() & targetSquares);
+        appendMoves(result, movablePieces, 0, 2*dy);
+
+        // capture
+        for (int dx : {-1,1}) {
+            movablePieces = ownPawns & ~pinnedForDirection(dx,dy) & applyOffset(-dx,-dy,getOccupied(!pov)) & canMoveToMask(dx,dy);
+            appendMoves(result, movablePieces, dx,dy, promotableRank);
+        }
+    }
+
+    void Bitboard::castlingMoves(std::vector<Move> &result) const {
+        if (checks != 0) return;
+        bool kingsideRights = castlingRights[pov ? 0 : 2];
+        bool queensideRights = castlingRights[pov ? 1 : 3];
+        unsigned rankShift = (pov ? 0 : 7);
+        uint64_t queensideBetween = 0b01110000ull << rankShift;
+        uint64_t kingsideBetween = 0b00000110ull << rankShift;
+        uint64_t queensideTraversed = 0b00110000ull << rankShift;
+        uint64_t kingsideTraversed = kingsideBetween;
+        uint64_t ownKing = kings & getOccupied(pov);
+
+        if (kingsideRights && (kingsideBetween&occupied()) == 0 && (kingsideTraversed&controlled) == 0)
+            appendMoves(result, ownKing, -2, 0);
+        if (queensideRights && (queensideBetween&occupied())==0 && (queensideTraversed&controlled) == 0)
+            appendMoves(result, ownKing, 2, 0);
+
+    }
+
+    void Bitboard::appendMoves(std::vector<Move> &result, uint64_t movablePieces, int dx, int dy, uint64_t promotable) {
+        promotable &= movablePieces;
+        if (movablePieces == 0) return;
+        int8_t offset = dx+8*dy;
+        uint8_t idx = 0;
+        while (movablePieces != 0) {
+            uint8_t trailingZeros = std::countr_zero(movablePieces);
+            uint8_t trailingZerosPromotable = std::countr_zero(promotable);
+            idx += trailingZeros;
+            if (trailingZeros != trailingZerosPromotable){
+                result.emplace_back(idx, idx+offset);
+            }
+            else {
+                result.emplace_back(idx, idx+offset, 'q');
+                result.emplace_back(idx, idx+offset, 'r');
+                result.emplace_back(idx, idx+offset, 'b');
+                result.emplace_back(idx, idx+offset, 'n');
+            }
+            idx ++;
+            movablePieces >>= trailingZeros+1;
+            promotable >>= trailingZeros+1;
+        }
+    }
+
 
 } // namespace chess
