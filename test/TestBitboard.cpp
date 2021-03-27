@@ -3,6 +3,7 @@
 #include "Bitboard.hpp"
 
 #define MOVE_IN(legalMoves, move) EXPECT_TRUE(std::find(legalMoves.begin(), legalMoves.end(), chess::Move(move)) != legalMoves.end())
+#define MOVE_NOT_IN(legalMoves, move) EXPECT_TRUE(std::find(legalMoves.begin(), legalMoves.end(), chess::Move(move)) == legalMoves.end())
 
 TEST(TestBitboard, parseStartposFen) {
   auto bitboard = chess::Bitboard();
@@ -347,6 +348,37 @@ TEST(TestBitboard, blockedCastling) {
 
     MOVE_IN(legalMoves, "h1f1");
     MOVE_IN(legalMoves, "h1g1");
+}
+
+TEST(TestBitboard, enPassantCaptureMoves) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("8/8/8/4k3/1p1pPp2/8/8/1K6 b - e3 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(),  9);
+
+    MOVE_IN(legalMoves, "f4e3");
+    MOVE_IN(legalMoves, "d4e3");
+}
+
+TEST(TestBitboard, enPassantRegularPin) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("8/8/8/4k3/1p1pPp2/8/7Q/1K6 b - e3 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(),  7);
+
+    MOVE_NOT_IN(legalMoves, "f4e3");
+    MOVE_IN(legalMoves, "d4e3");
+}
+
+TEST(TestBitboard, enPassantWeakPin) {
+    auto bitboard = chess::Bitboard();
+    bitboard.parseFEN("8/8/8/2k5/1p1pPp2/8/8/1K4Q1 b - e3 0 1");
+    auto legalMoves = bitboard.legalMoves();
+    EXPECT_EQ(legalMoves.size(),  9);
+
+    MOVE_IN(legalMoves, "f4e3");
+    MOVE_IN(legalMoves, "d4e3");
+
 }
 
 

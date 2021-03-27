@@ -34,6 +34,7 @@ namespace chess {
         mutable uint64_t pinnedVertical;
         mutable uint64_t pinnedDiagonal;
         mutable uint64_t pinnedAntidiagonal;
+        mutable uint64_t pinnedEnPassant;
         mutable uint64_t checks;
         mutable bool cachedAttack;
 

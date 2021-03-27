@@ -23,6 +23,7 @@ namespace chess {
         evalKnightAttack();
         evalPawnAttack();
         evalKingAttack();
+        evalEnPassantPin();
         cachedAttack = true;
     }
 
@@ -31,6 +32,7 @@ namespace chess {
         pinnedVertical = 0;
         pinnedDiagonal = 0;
         pinnedAntidiagonal = 0;
+        pinnedEnPassant = 0;
         controlled = 0;
         checks = 0;
         cachedAttack = false;
@@ -135,6 +137,58 @@ namespace chess {
 
     }
 
+    void Bitboard::evalEnPassantPin() const {
+        if (!enPassantFile.has_value()) return;
+        uint8_t rankShift = (pov ? 4 : 3) * 8;
+        uint64_t relevantRank = 0xffull << rankShift;
+        uint64_t ownKingsOnRelevantRank = kings & getOccupied(pov) & relevantRank;
+        if (ownKingsOnRelevantRank == 0) return;
+
+        uint8_t ownKingIdx = std::countr_zero(ownKingsOnRelevantRank);
+        bool isKingLeftOfEnPassant = ownKingIdx % 8 > enPassantFile.value();
+
+        uint64_t rightSideMask = (1ull << (enPassantFile.value() + rankShift)) - 1;
+        uint64_t correctSideMask = (isKingLeftOfEnPassant ? rightSideMask : ~rightSideMask) & relevantRank;
+        uint64_t enemyRookLikeCorrectSide = (queens | rooks) & getOccupied(!pov) & correctSideMask;
+        if (enemyRookLikeCorrectSide == 0) return;
+
+        uint8_t enemyRookIdx = isKingLeftOfEnPassant ? 63 - std::countl_zero(enemyRookLikeCorrectSide)
+                                                     : std::countr_zero(enemyRookLikeCorrectSide);
+
+        uint64_t betweenKingRook = (((1ull << ownKingIdx) - 1) ^ ((1ull << enemyRookIdx) - 1)) &
+                                   ~(enemyRookLikeCorrectSide | ownKingsOnRelevantRank);
+
+        uint64_t pawnsBetween = pawns & betweenKingRook;
+        uint64_t occupiedBetween = occupied() & betweenKingRook;
+        if (pawnsBetween != occupiedBetween) return;
+        if (std::popcount(pawnsBetween) != 2) return;
+
+        pinnedEnPassant = pawnsBetween & getOccupied(pov);
+    }
+
+    void Bitboard::evalEnPassantLegality() {
+        if (!enPassantFile.has_value()) return;
+        evalAttack();
+        // special en passant pin can only occur if a single pawn could capture
+        if (pinnedEnPassant != 0) {
+            enPassantFile.reset();
+            return;
+        }
+
+        uint8_t rankShift = (pov ? 4 : 3) * 8;
+        uint64_t relevantRank = 0xffull << rankShift;
+        uint64_t ownPawnsOnRank = pawns & getOccupied(pov) & relevantRank;
+        uint64_t leftCapture = (1ull << (enPassantFile.value() + rankShift + 1)) & ownPawnsOnRank;
+        uint64_t rightCapture = (1ull << (enPassantFile.value() + rankShift - 1)) & ownPawnsOnRank;
+        bool leftCanCapture = (leftCapture & ~pinnedForDirection(-1, pov ? 1 : -1)) != 0;
+        bool rightCanCapture = (rightCapture & ~pinnedForDirection(-1, pov ? 1 : -1)) != 0;
+
+        if (!leftCanCapture && !rightCanCapture) {
+            enPassantFile.reset();
+        }
+
+    }
+
     void Bitboard::parseFEN(std::string_view fen) {
         auto board_fen_end = fen.find(' ');
         auto color_fen_end = fen.find(' ', board_fen_end + 1);
@@ -154,6 +208,7 @@ namespace chess {
         parseEnPassantFEN(en_passant_fen);
 
         resetCachedAttack();
+        evalEnPassantLegality();
 
     }
 
@@ -318,7 +373,7 @@ namespace chess {
 
         resetCachedAttack();
         // check if enPassant can be captured legally
-        //evalEnPassantLegality();
+        evalEnPassantLegality();
     }
 
     void Bitboard::preApplyPromotion(uint64_t fromMask, const Move &move) {
@@ -508,13 +563,11 @@ namespace chess {
     }
 
     uint64_t Bitboard::pinnedForDirection(int dx, int dy) const {
-        return pinnedAny() & ~relevantPinMap(dx,dy);
+        return pinnedAny() & ~relevantPinMap(dx, dy);
     }
 
     std::vector<Move> Bitboard::legalMoves() const {
-        if (!cachedAttack) {
-            evalAttack();
-        }
+        evalAttack();
         assert(cachedAttack);
 
         std::vector<Move> result;
@@ -602,12 +655,13 @@ namespace chess {
 
     void Bitboard::queenLikeMovesSingleRay(std::vector<Move> &result, uint64_t targetSquares, int dx, int dy) const {
         uint64_t relevantPieces = (queens | (dx == 0 || dy == 0 ? rooks : bishops)) & getOccupied(pov);
-        uint64_t unpinnedPieces = relevantPieces&~pinnedForDirection(dx,dy);
+        uint64_t unpinnedPieces = relevantPieces & ~pinnedForDirection(dx, dy);
         uint64_t lastFree = unpinnedPieces;
         for (int dist = 1; dist < 8; dist++) {
-            uint64_t movablePieces = lastFree & canMoveToMask(dx*dist, dy*dist) & applyOffset(-dx*dist, -dy*dist, ~getOccupied(pov) & targetSquares);
-            appendMoves(result, movablePieces, dx*dist, dy*dist);
-            lastFree &= applyOffset(-dx*dist, -dy*dist, ~occupied());
+            uint64_t movablePieces = lastFree & canMoveToMask(dx * dist, dy * dist) &
+                                     applyOffset(-dx * dist, -dy * dist, ~getOccupied(pov) & targetSquares);
+            appendMoves(result, movablePieces, dx * dist, dy * dist);
+            lastFree &= applyOffset(-dx * dist, -dy * dist, ~occupied());
         }
     }
 
@@ -619,32 +673,37 @@ namespace chess {
         for (unsigned idx = 0; idx < 8; idx++) {
             int dx = dxArray[idx];
             int dy = dyArray[idx];
-            uint64_t movablePieces = relevantPieces & canMoveToMask(dx,dy) & applyOffset(-dx, -dy, ~getOccupied(pov) & targetSquares);
+            uint64_t movablePieces =
+                    relevantPieces & canMoveToMask(dx, dy) & applyOffset(-dx, -dy, ~getOccupied(pov) & targetSquares);
             appendMoves(result, movablePieces, dx, dy);
         }
     }
 
     void Bitboard::pawnMoves(std::vector<Move> &result, uint64_t targetSquares) const {
 
-        uint64_t promotableRank = pov ? 0xffull << 8u*6u : 0xff00ull;
-        uint64_t startingRank = !pov ? 0xffull << 8u*6u : 0xff00ull;
+        uint64_t promotableRank = pov ? 0xffull << 8u * 6u : 0xff00ull;
+        uint64_t startingRank = !pov ? 0xffull << 8u * 6u : 0xff00ull;
         uint64_t ownPawns = pawns & getOccupied(pov);
         int dy = pov ? 1 : -1;
 
-        uint64_t pushable = ownPawns & ~pinnedForDirection(0,dy) & applyOffset(0, -dy, ~occupied());
+        uint64_t pushable = ownPawns & ~pinnedForDirection(0, dy) & applyOffset(0, -dy, ~occupied());
 
         // regular push
-        uint64_t movablePieces = pushable & applyOffset(0,-dy, targetSquares);
+        uint64_t movablePieces = pushable & applyOffset(0, -dy, targetSquares);
         appendMoves(result, movablePieces, 0, dy, promotableRank);
 
         // double push
-        movablePieces = pushable & startingRank & applyOffset(0,-2*dy, ~occupied() & targetSquares);
-        appendMoves(result, movablePieces, 0, 2*dy);
+        movablePieces = pushable & startingRank & applyOffset(0, -2 * dy, ~occupied() & targetSquares);
+        appendMoves(result, movablePieces, 0, 2 * dy);
 
         // capture
-        for (int dx : {-1,1}) {
-            movablePieces = ownPawns & ~pinnedForDirection(dx,dy) & applyOffset(-dx,-dy,getOccupied(!pov)) & canMoveToMask(dx,dy);
-            appendMoves(result, movablePieces, dx,dy, promotableRank);
+        uint64_t capturable = getOccupied(!pov);
+        if (enPassantFile.has_value())
+            capturable |= 1ull << (enPassantFile.value() + (pov ? 5 : 2)*8);
+        for (int dx : {-1, 1}) {
+            movablePieces = ownPawns & ~pinnedForDirection(dx, dy) & applyOffset(-dx, -dy, capturable) &
+                            canMoveToMask(dx, dy);
+            appendMoves(result, movablePieces, dx, dy, promotableRank);
         }
     }
 
@@ -659,9 +718,9 @@ namespace chess {
         uint64_t kingsideTraversed = kingsideBetween;
         uint64_t ownKing = kings & getOccupied(pov);
 
-        if (kingsideRights && (kingsideBetween&occupied()) == 0 && (kingsideTraversed&controlled) == 0)
+        if (kingsideRights && (kingsideBetween & occupied()) == 0 && (kingsideTraversed & controlled) == 0)
             appendMoves(result, ownKing, -2, 0);
-        if (queensideRights && (queensideBetween&occupied())==0 && (queensideTraversed&controlled) == 0)
+        if (queensideRights && (queensideBetween & occupied()) == 0 && (queensideTraversed & controlled) == 0)
             appendMoves(result, ownKing, 2, 0);
 
     }
@@ -669,24 +728,23 @@ namespace chess {
     void Bitboard::appendMoves(std::vector<Move> &result, uint64_t movablePieces, int dx, int dy, uint64_t promotable) {
         promotable &= movablePieces;
         if (movablePieces == 0) return;
-        int8_t offset = dx+8*dy;
+        int8_t offset = dx + 8 * dy;
         uint8_t idx = 0;
         while (movablePieces != 0) {
             uint8_t trailingZeros = std::countr_zero(movablePieces);
             uint8_t trailingZerosPromotable = std::countr_zero(promotable);
             idx += trailingZeros;
-            if (trailingZeros != trailingZerosPromotable){
-                result.emplace_back(idx, idx+offset);
+            if (trailingZeros != trailingZerosPromotable) {
+                result.emplace_back(idx, idx + offset);
+            } else {
+                result.emplace_back(idx, idx + offset, 'q');
+                result.emplace_back(idx, idx + offset, 'r');
+                result.emplace_back(idx, idx + offset, 'b');
+                result.emplace_back(idx, idx + offset, 'n');
             }
-            else {
-                result.emplace_back(idx, idx+offset, 'q');
-                result.emplace_back(idx, idx+offset, 'r');
-                result.emplace_back(idx, idx+offset, 'b');
-                result.emplace_back(idx, idx+offset, 'n');
-            }
-            idx ++;
-            movablePieces >>= trailingZeros+1;
-            promotable >>= trailingZeros+1;
+            idx++;
+            movablePieces >>= trailingZeros + 1;
+            promotable >>= trailingZeros + 1;
         }
     }
 
