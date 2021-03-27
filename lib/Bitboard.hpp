@@ -38,6 +38,8 @@ namespace chess {
         mutable uint64_t checks;
         mutable bool cachedAttack;
 
+        mutable std::optional<std::vector<Move>> legalMovesCache;
+
     private:
         void evalPawnAttack() const;
 
@@ -130,6 +132,8 @@ namespace chess {
 
         void parseEnPassantFEN(std::string_view enPassantFen);
 
+        void parseHalfMoveFEN(std::string_view halfMoveFen);
+
     public:
         std::string to_fen() const;
 
@@ -166,5 +170,12 @@ namespace chess {
 
         static void appendMoves(std::vector<Move>& result, uint64_t movablePieces, int dx, int dy, uint64_t promotable = 0);
 
+        bool isGameOver() const;
+
+        bool isCheck() const;
+
+        bool isDraw50() const;
+
+        bool isDrawInsufficient() const;
     }; // class Bitboard
 } // namespace chess

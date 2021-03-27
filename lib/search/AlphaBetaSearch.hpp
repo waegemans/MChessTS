@@ -1,26 +1,25 @@
 #pragma once
 
 #include <vector>
-#include <eval/PieceCountEvaluator.hpp>
 #include "Search.hpp"
 #include "Move.hpp"
 #include <atomic>
+#include <eval/PiecePositionEvaluator.hpp>
 
 namespace chess {
 class AlphaBetaSearch : public Search {
 public:
-    Move findNextMove(const State &state, const Clock &clock) override;
+    Move findNextMove(State &state, const Clock &clock) override;
     AlphaBetaSearch(Evaluator& evaluator) : Search(evaluator) {};
 private:
-    static void iterativeDeepeningSearch(const State& state,const Evaluator& evaluator, Move& bestMove, std::atomic<bool>& stop);
-    static Score search(const State &state, unsigned maxDepth, bool max, std::optional<Score> alpha, std::optional<Score> beta, std::vector<Move>& line, std::vector<Move>::const_iterator pvBegin, std::vector<Move>::const_iterator pvEnd, const Evaluator& evaluator, std::atomic<bool>& stop);
+    static void iterativeDeepeningSearch(State& state,const Evaluator& evaluator, Move& bestMove, const Clock& clock);
+    static Score search(State &state, unsigned maxDepth, bool max, std::optional<Score> alpha, std::optional<Score> beta, std::vector<Move>& line, std::vector<Move>::const_iterator pvBegin, std::vector<Move>::const_iterator pvEnd, const Evaluator& evaluator, uint64_t& nodes);
 };
 struct presortingLessThen {
 public:
-    PieceCountEvaluator evaluator;
+    PiecePositionEvaluator evaluator;
     bool maximize;
-    std::optional<Move> pvMove;
-    explicit presortingLessThen(bool maximize, std::optional<Move> pvMove = std::nullopt) : evaluator(), maximize(maximize), pvMove(pvMove) {};
-    inline bool operator() (const std::pair<Move,State>&,const std::pair<Move,State>&);
+    explicit presortingLessThen(bool maximize) : evaluator(), maximize(maximize) {};
+    inline bool operator() (const Bitboard&,const Bitboard&);
 };
 }

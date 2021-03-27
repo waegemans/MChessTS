@@ -10,7 +10,7 @@ class Search {
 protected:
     Evaluator& evaluator;
 public:
-    virtual Move findNextMove(const State& state,const Clock& clock) = 0;
+    virtual Move findNextMove(State& state,const Clock& clock) = 0;
     Search(Evaluator& evaluator) : evaluator(evaluator) {};
 };
 }

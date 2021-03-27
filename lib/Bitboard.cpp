@@ -4,6 +4,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <bit>
+#include <charconv>
 
 namespace chess {
     namespace {
@@ -36,6 +37,7 @@ namespace chess {
         controlled = 0;
         checks = 0;
         cachedAttack = false;
+        legalMovesCache.reset();
     }
 
     void Bitboard::evalPawnAttack() const {
@@ -194,18 +196,20 @@ namespace chess {
         auto color_fen_end = fen.find(' ', board_fen_end + 1);
         auto castling_fen_end = fen.find(' ', color_fen_end + 1);
         auto en_passant_fen_end = fen.find(' ', castling_fen_end + 1);
-        //auto half_move_fen_end = fen.find(' ', en_passant_fen_end+1);
+        auto half_move_fen_end = fen.find(' ', en_passant_fen_end+1);
 
 
         std::string_view board_fen = fen.substr(0, board_fen_end);
         std::string_view color_fen = fen.substr(board_fen_end + 1, 1);
         std::string_view castling_fen = fen.substr(color_fen_end + 1, castling_fen_end - color_fen_end - 1);
         std::string_view en_passant_fen = fen.substr(castling_fen_end + 1, en_passant_fen_end - castling_fen_end - 1);
+        std::string_view half_move_fen = fen.substr(en_passant_fen_end + 1, half_move_fen_end - en_passant_fen_end - 1);
 
         parseBoardFEN(board_fen);
         parsePovFEN(color_fen);
         parseCastlingFEN(castling_fen);
         parseEnPassantFEN(en_passant_fen);
+        parseHalfMoveFEN(half_move_fen);
 
         resetCachedAttack();
         evalEnPassantLegality();
@@ -287,6 +291,10 @@ namespace chess {
         }
     }
 
+    void Bitboard::parseHalfMoveFEN(std::string_view halfMoveFen) {
+        std::from_chars(halfMoveFen.data(), halfMoveFen.data()+halfMoveFen.size(), halfMoveCounter);
+    }
+
     std::string Bitboard::to_fen() const { throw std::logic_error("Not implemented!"); }
 
     std::string Bitboard::to_string() const {
@@ -323,6 +331,8 @@ namespace chess {
         pawns = (0xffull << 6u * 8u) | (0xff00ull);
         occupiedWhite = 0xffffull;
         occupiedBlack = occupiedWhite << 6u * 8u;
+
+        halfMoveCounter = 0;
 
         pov = true;
         castlingRights.set();
@@ -482,7 +492,6 @@ namespace chess {
 
     bool Bitboard::operator==(const Bitboard &other) const {
         // does not compare en passant, pov, castling, ...
-        throw std::logic_error("Not implemented!");
         return
                 kings == other.kings &&
                 queens == other.queens &&
@@ -491,7 +500,9 @@ namespace chess {
                 bishops == other.bishops &&
                 pawns == other.pawns &&
                 occupiedWhite == other.occupiedWhite &&
-                occupiedBlack == other.occupiedBlack;
+                occupiedBlack == other.occupiedBlack &&
+                castlingRights == other.castlingRights &&
+                enPassantFile == other.enPassantFile;
     }
 
 
@@ -567,6 +578,7 @@ namespace chess {
     }
 
     std::vector<Move> Bitboard::legalMoves() const {
+        if (legalMovesCache.has_value()) return legalMovesCache.value();
         evalAttack();
         assert(cachedAttack);
 
@@ -591,6 +603,7 @@ namespace chess {
         pawnMoves(result, targets);
         castlingMoves(result);
 
+        legalMovesCache = result;
         return result;
     }
 
@@ -697,9 +710,9 @@ namespace chess {
         appendMoves(result, movablePieces, 0, 2 * dy);
 
         // capture
-        uint64_t capturable = getOccupied(!pov);
+        uint64_t capturable = getOccupied(!pov) & targetSquares;
         if (enPassantFile.has_value())
-            capturable |= 1ull << (enPassantFile.value() + (pov ? 5 : 2)*8);
+            capturable |= 1ull << (enPassantFile.value() + (pov ? 5 : 2) * 8);
         for (int dx : {-1, 1}) {
             movablePieces = ownPawns & ~pinnedForDirection(dx, dy) & applyOffset(-dx, -dy, capturable) &
                             canMoveToMask(dx, dy);
@@ -746,6 +759,45 @@ namespace chess {
             movablePieces >>= trailingZeros + 1;
             promotable >>= trailingZeros + 1;
         }
+    }
+
+    bool Bitboard::isGameOver() const {
+        return legalMoves().empty() | isDraw50() | isDrawInsufficient();
+    }
+
+    bool Bitboard::isCheck() const {
+        evalAttack();
+        return checks != 0;
+    }
+
+    bool Bitboard::isDraw50() const {
+        return halfMoveCounter >= 100;
+    }
+
+    bool Bitboard::isDrawInsufficient() const {
+        uint8_t numberOfPieces = std::popcount(occupied());
+        uint8_t numberOfMinors = std::popcount(bishops | knights);
+        uint8_t numberOfBishops = std::popcount(bishops);
+        uint8_t numberOfPov = std::popcount(getOccupied(pov));
+        // only two kings
+        if (numberOfPieces == 2) {
+            assert(std::popcount(kings) == 2);
+            return true;
+        }
+
+        // king vs king + (bishop or knight)
+        if ((numberOfPieces == 3) & (numberOfMinors == 1)) {
+            return true;
+        }
+
+        if ((numberOfPieces == 4) & (numberOfPov == 2) & (numberOfBishops == 2)) {
+            uint64_t whiteSquares = 0xaa55aa55aa55aa55ull;
+            uint8_t bishopsOnWhite = std::popcount(bishops & whiteSquares);
+            // opposite color bishops
+            if (bishopsOnWhite == 1) return true;
+        }
+
+        return false;
     }
 
 

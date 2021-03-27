@@ -7,11 +7,15 @@ constexpr uint64_t center = 0x0000001818000000ull;
 constexpr uint64_t offCenter = 0x0000182424180000ull;
 namespace chess {
     Score PiecePositionEvaluator::evalNotGameOver(const State &state) const {
+        const auto& bitboard = state.getCurrentBitboard();
+        return evalNotGameOver(bitboard);
+    }
+
+    Score PiecePositionEvaluator::evalNotGameOver(const Bitboard &bitboard) const {
         int cpValue = 0;
-        const auto& bitboard = state.getBitboard();
         for (bool pov : {true,false}){
             int povFactor = (pov ? 1 : -1 );
-            uint64_t occupied = bitboard.getOccupiedPov(pov);
+            uint64_t occupied = bitboard.getOccupied(pov);
 
             cpValue += povFactor*100*std::popcount(bitboard.getPawns() & occupied);
             cpValue += povFactor*300*std::popcount(bitboard.getBishops() & occupied);

@@ -1,8 +1,10 @@
 set(
         TEST_SOURCES
 
+        TestAlphaBetaSearch.cpp
         TestBitboard.cpp
         TestMove.cpp
+        TestScore.cpp
         Tester.cpp)
 
 add_executable(tester ${TEST_SOURCES})

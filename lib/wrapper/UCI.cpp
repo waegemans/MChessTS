@@ -62,7 +62,7 @@ namespace chess {
         std::string moveUCI;
         if (line >> moveUCI && moveUCI == "moves"){
             while (line.rdbuf()->in_avail() && line >> moveUCI) {
-                state.applyMoveSelf(Move(moveUCI));
+                state.pushMove(Move(moveUCI));
             }
         }
 
